@@ -142,7 +142,7 @@ async def auto_post():
         except Exception as e:
             print("❌ error en auto_post:", e)
 
-        await asyncio.sleep(60)
+        await asyncio.sleep(5)
 
 # ================== MAIN ==================
 async def main():

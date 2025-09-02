@@ -1,6 +1,4 @@
 aiogram==3.12.0
-python-dotenv
-beautifulsoup4
-requests
-
-git+https://github.com/Kiny-Kiny/EromeAPI.git
+python-dotenv==1.0.1
+beautifulsoup4==4.12.3
+requests==2.32.3

@@ -14,10 +14,10 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 if not BOT_TOKEN:
     raise RuntimeError("Falta BOT_TOKEN en .env")
 
+# permitir varios chats separados por coma
 ALLOWED = {int(x.strip()) for x in os.getenv("ALLOWED_CHATS", "").split(",") if x.strip()}
 if not ALLOWED:
     raise RuntimeError("Debes configurar al menos un chat en ALLOWED_CHATS")
-CHAT_ID = next(iter(ALLOWED))
 
 # sesión con timeout fijo
 session = AiohttpSession(timeout=120)
@@ -29,7 +29,6 @@ TAGS = ["casero", "amateur", "latina", "filtrada", "pack", "nudes", "mamada"]
 
 # ================== UTIL ==================
 def safe_remove(path: str | Path, retries: int = 6, delay: float = 0.5) -> None:
-    """Borra un archivo con reintentos (útil en Windows si está en uso)."""
     p = Path(path)
     for _ in range(retries):
         try:
@@ -42,7 +41,7 @@ def safe_remove(path: str | Path, retries: int = 6, delay: float = 0.5) -> None:
             time.sleep(delay)
 
 def download_video_to_temp(url: str) -> FSInputFile | None:
-    """Descarga un video de Erome y lo guarda en archivo temporal, devuelve FSInputFile."""
+    """Descarga un video de Erome y lo guarda en archivo temporal."""
     try:
         data = erome.get_content(url, max_video_bytes=VIDEO_SIZE_LIMIT)
         if isinstance(data, Exception) or not data:
@@ -64,7 +63,8 @@ def download_video_to_temp(url: str) -> FSInputFile | None:
 # ================== PRIVADO ==================
 @dp.message()
 async def ignore_all(m: types.Message):
-    if m.chat.id != CHAT_ID and (not m.from_user or m.from_user.id != CHAT_ID):
+    """Ignora mensajes de chats no autorizados."""
+    if m.chat.id not in ALLOWED and (not m.from_user or m.from_user.id not in ALLOWED):
         return
 
 # ================== TAREA AUTOMÁTICA ==================
@@ -76,7 +76,6 @@ async def auto_post():
             results = erome.get_all_album_data(tag, page=1, limit=5)
             print(f"📂 encontrados {len(results)} álbumes para #{tag}")
 
-            # filtrar por título también
             filtered = [r for r in results if tag.lower() in r["title"].lower()]
             if filtered:
                 results = filtered
@@ -93,9 +92,8 @@ async def auto_post():
                 print(f"🎬 {len(videos)} videos y 🖼️ {len(photos)} fotos en el álbum")
 
                 media = []
-                temp_files = []  # guardar rutas para limpiar luego
+                temp_files = []
 
-                # agregar videos descargados
                 for v in videos:
                     link = v.get("video_url")
                     if not link:
@@ -110,9 +108,8 @@ async def auto_post():
                         )
                         temp_files.append(video_file.path)
 
-                # agregar fotos por URL (Telegram acepta directo)
                 for img in photos:
-                    if len(media) >= 10:  # máx 10 archivos en media group
+                    if len(media) >= 10:
                         break
                     media.append(
                         InputMediaPhoto(
@@ -121,32 +118,35 @@ async def auto_post():
                         )
                     )
 
-                # enviar
                 if not media:
                     print("⚠️ no se pudo armar el media group")
-                elif len(media) == 1:
-                    m = media[0]
-                    if isinstance(m, InputMediaVideo):
-                        await bot.send_video(CHAT_ID, video=m.media, caption=f"#{tag}")
-                    elif isinstance(m, InputMediaPhoto):
-                        await bot.send_photo(CHAT_ID, photo=m.media, caption=f"#{tag}")
-                    print("✅ 1 elemento enviado individual")
                 else:
-                    await bot.send_media_group(CHAT_ID, media=media)
-                    print(f"✅ álbum enviado como media group ({len(media)} elementos)")
+                    for chat_id in ALLOWED:
+                        try:
+                            if len(media) == 1:
+                                m = media[0]
+                                if isinstance(m, InputMediaVideo):
+                                    await bot.send_video(chat_id, video=m.media, caption=f"#{tag}")
+                                elif isinstance(m, InputMediaPhoto):
+                                    await bot.send_photo(chat_id, photo=m.media, caption=f"#{tag}")
+                                print(f"✅ enviado 1 elemento a {chat_id}")
+                            else:
+                                await bot.send_media_group(chat_id, media=media)
+                                print(f"✅ álbum enviado como media group a {chat_id}")
+                        except Exception as e:
+                            print(f"❌ error enviando a {chat_id}:", e)
 
-                # limpiar archivos temporales
                 for path in temp_files:
                     safe_remove(path)
 
         except Exception as e:
             print("❌ error en auto_post:", e)
 
-        await asyncio.sleep(5)  # cada minuto
+        await asyncio.sleep(60)
 
 # ================== MAIN ==================
 async def main():
-    print("🤖 bot iniciado (modo privado, multi-tag, envía álbum completo)")
+    print("🤖 bot iniciado (multi-chat, multi-tag, álbum completo)")
     asyncio.create_task(auto_post())
     await dp.start_polling(bot)
 

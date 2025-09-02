@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Virtualenv
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# Archivos grandes o inútiles
+*.mp4
+*.avi
+*.mkv
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz
+*.pdf
+*.png
+*.jpg
+*.jpeg
+
+# Carpetas de sistema
+.DS_Store
+Thumbs.db

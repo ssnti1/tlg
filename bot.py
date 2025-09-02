@@ -15,8 +15,8 @@ if not BOT_TOKEN:
     raise RuntimeError("Falta BOT_TOKEN en .env")
 
 ALLOWED = {int(x.strip()) for x in os.getenv("ALLOWED_CHATS", "").split(",") if x.strip()}
-if len(ALLOWED) != 1:
-    raise RuntimeError("Configura exactamente 1 chat en ALLOWED_CHATS para modo privado")
+if not ALLOWED:
+    raise RuntimeError("Debes configurar al menos un chat en ALLOWED_CHATS")
 CHAT_ID = next(iter(ALLOWED))
 
 # sesión con timeout fijo
